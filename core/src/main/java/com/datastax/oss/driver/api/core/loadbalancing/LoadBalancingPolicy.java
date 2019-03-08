@@ -32,12 +32,20 @@ public interface LoadBalancingPolicy extends AutoCloseable {
    * Initializes this policy with the nodes discovered during driver initialization.
    *
    * <p>This method is guaranteed to be called exactly once per instance, and before any other
-   * method in this class.
+   * method in this class. At this point, the driver has successfully connected to one of the
+   * contact points, and performed a first refresh of topology information (by default, the contents
+   * of {@code system.peers}) to find out which other nodes exist in the cluster.
    *
-   * @param nodes the nodes discovered by the driver when it connected to the cluster. When this
-   *     method is invoked, their state is guaranteed to be either {@link NodeState#UP} or {@link
-   *     NodeState#UNKNOWN}. Node states may be updated concurrently while this method executes, but
-   *     if so you will receive a notification.
+   * @param nodes the nodes in the cluster. This method must call {@link
+   *     DistanceReporter#setDistance(Node, NodeDistance) distanceReporter.setDistance} for each one
+   *     of them (otherwise it will stay at {@link NodeDistance#IGNORED} and the driver won't open
+   *     connections to it). Note that the {@link Node#getState() state} can be either {@link
+   *     NodeState#UP} (for the successful contact point), {@link NodeState#DOWN} (for contact
+   *     points that were tried unsuccessfully), or {@link NodeState#UNKNOWN} (for contact points
+   *     that weren't tried, or any other node discovered from the topology refresh). Node states
+   *     may be updated concurrently while this method executes, but if so this policy will get
+   *     notified after this method has returned, through other methods such as {@link #onUp(Node)}
+   *     or {@link #onDown(Node)}.
    * @param distanceReporter an object that will be used by the policy to signal distance changes.
    */
   void init(@NonNull Map<UUID, Node> nodes, @NonNull DistanceReporter distanceReporter);
